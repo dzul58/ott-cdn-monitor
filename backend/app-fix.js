@@ -8,10 +8,6 @@ const moment = require('moment-timezone');
 const app = express();
 const port = 3000;
 
-// Middleware
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-
 // Database configuration
 const pool = new Pool({
     user: process.env.DB_USER,
@@ -84,8 +80,8 @@ async function checkCdnStatus(cdnServer, channel) {
             await pool.query(
                 `INSERT INTO ott_monitoring_logs 
                 (cdn_server_id, channel_id, status, response_time, error_message, 
-                 request_url, response_code, response_headers, response_body, created_at) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                 request_url, response_code, response_headers, response_body) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
                 [
                     cdnServer.id, 
                     channel.id, 
@@ -95,8 +91,7 @@ async function checkCdnStatus(cdnServer, channel) {
                     url,
                     response.status,
                     JSON.stringify(response.headers),
-                    response.data.substring(0, 1000),
-                    moment().tz('Asia/Jakarta').toISOString()
+                    response.data.substring(0, 1000)
                 ]
             );
         }
@@ -138,8 +133,8 @@ async function checkCdnStatus(cdnServer, channel) {
             await pool.query(
                 `INSERT INTO ott_monitoring_logs 
                 (cdn_server_id, channel_id, status, response_time, error_message, 
-                 request_url, response_code, response_headers, response_body, created_at) 
-                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)`,
+                 request_url, response_code, response_headers, response_body) 
+                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
                 [
                     cdnServer.id,
                     channel.id,
@@ -149,8 +144,7 @@ async function checkCdnStatus(cdnServer, channel) {
                     url,
                     error.response?.status || 0,
                     JSON.stringify(error.response?.headers || {}),
-                    error.response?.data || error.message,
-                    moment().tz('Asia/Jakarta').toISOString()
+                    error.response?.data || error.message
                 ]
             );
         }
@@ -179,119 +173,29 @@ async function runMonitoring() {
     }
 }
 
-// Enhanced monitoring status endpoint with pagination and search
+// API endpoint to get latest monitoring results
 app.get('/monitoring/status', async (req, res) => {
     try {
-        // Pagination parameters
-        const page = parseInt(req.query.page) || 1;
-        const limit = parseInt(req.query.limit) || 10;
-        const offset = (page - 1) * limit;
-        
-        // Search parameters
-        const search = {
-            name_cdn: req.query.name_cdn || '',
-            ip_cdn: req.query.ip_cdn || '',
-            name_channel: req.query.name_channel || ''
-        };
-
-        // Build search conditions
-        const searchConditions = [];
-        const searchParams = [];
-        let paramCount = 1;
-
-        if (search.name_cdn) {
-            searchConditions.push(`LOWER(s.name_cdn) LIKE LOWER($${paramCount})`);
-            searchParams.push(`%${search.name_cdn}%`);
-            paramCount++;
-        }
-        if (search.ip_cdn) {
-            searchConditions.push(`LOWER(s.ip_cdn) LIKE LOWER($${paramCount})`);
-            searchParams.push(`%${search.ip_cdn}%`);
-            paramCount++;
-        }
-        if (search.name_channel) {
-            searchConditions.push(`LOWER(c.name_channel) LIKE LOWER($${paramCount})`);
-            searchParams.push(`%${search.name_channel}%`);
-            paramCount++;
-        }
-
-        const whereClause = searchConditions.length 
-            ? 'WHERE ' + searchConditions.join(' AND ')
-            : '';
-
-        // Get total count for pagination
-        const countQuery = `
-            SELECT COUNT(*) 
+        const result = await pool.query(`
+            SELECT 
+                s.name_cdn,
+                s.ip_cdn,
+                c.name_channel,
+                m.status,
+                m.response_time,
+                m.error_message,
+                m.created_at as update_at
             FROM ott_cdn_servers s
             CROSS JOIN ott_preview_channels c
             LEFT JOIN ott_monitoring_logs m ON 
                 m.cdn_server_id = s.id AND 
                 m.channel_id = c.id
-            ${whereClause}
-        `;
+            ORDER BY s.name_cdn, c.name_channel
+        `);
         
-        const countResult = await pool.query(countQuery, searchParams);
-        const totalItems = parseInt(countResult.rows[0].count);
-        const totalPages = Math.ceil(totalItems / limit);
-
-        // Main query with pagination, search, and sorting
-        const mainQuery = `
-            WITH RankedLogs AS (
-                SELECT DISTINCT ON (s.id, c.id)
-                    s.name_cdn,
-                    s.ip_cdn,
-                    c.name_channel,
-                    m.status,
-                    m.response_time,
-                    m.error_message,
-                    m.created_at as update_at
-                FROM ott_cdn_servers s
-                CROSS JOIN ott_preview_channels c
-                LEFT JOIN ott_monitoring_logs m ON 
-                    m.cdn_server_id = s.id AND 
-                    m.channel_id = c.id
-                ${whereClause}
-                ORDER BY s.id, c.id, m.created_at DESC
-            )
-            SELECT *
-            FROM RankedLogs
-            ORDER BY 
-                status ASC,
-                update_at ASC
-            LIMIT $${paramCount}
-            OFFSET $${paramCount + 1}
-        `;
-
-        // Add pagination parameters
-        const queryParams = [...searchParams, limit, offset];
-        const result = await pool.query(mainQuery, queryParams);
-        
-        // Prepare pagination metadata
-        const pagination = {
-            currentPage: page,
-            totalPages: totalPages,
-            totalItems: totalItems,
-            itemsPerPage: limit,
-            hasNextPage: page < totalPages,
-            hasPreviousPage: page > 1
-        };
-
-        // Return formatted response
-        res.json({
-            status: "success",
-            message: "Data retrieved successfully",
-            pagination: pagination,
-            search: search,
-            data: result.rows
-        });
-
+        res.json(result.rows);
     } catch (error) {
-        console.error('Error in /monitoring/status:', error);
-        res.status(500).json({
-            status: "error",
-            message: error.message,
-            data: null
-        });
+        res.status(500).json({ error: error.message });
     }
 });
 
@@ -301,28 +205,9 @@ cron.schedule(process.env.MONITORING_INTERVAL, () => {
     runMonitoring();
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({
-        status: "error",
-        message: "Internal server error",
-        data: null
-    });
-});
-
 // Start the server
 app.listen(port, () => {
     console.log(`Server running on port ${port}`);
     // Run initial monitoring
     runMonitoring();
-});
-
-// Graceful shutdown
-process.on('SIGTERM', () => {
-    console.log('SIGTERM signal received: closing HTTP server');
-    server.close(() => {
-        console.log('HTTP server closed');
-        pool.end();
-    });
 });
