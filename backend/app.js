@@ -224,9 +224,6 @@ app.get('/monitoring/status', async (req, res) => {
             SELECT COUNT(*) 
             FROM ott_cdn_servers s
             CROSS JOIN ott_preview_channels c
-            LEFT JOIN ott_monitoring_logs m ON 
-                m.cdn_server_id = s.id AND 
-                m.channel_id = c.id
             ${whereClause}
         `;
         
@@ -234,30 +231,36 @@ app.get('/monitoring/status', async (req, res) => {
         const totalItems = parseInt(countResult.rows[0].count);
         const totalPages = Math.ceil(totalItems / limit);
 
-        // Main query with pagination, search, and sorting
+        // Main query with LATERAL join to get latest monitoring data
         const mainQuery = `
-            WITH RankedLogs AS (
-                SELECT DISTINCT ON (s.id, c.id)
-                    s.name_cdn,
-                    s.ip_cdn,
-                    c.name_channel,
-                    m.status,
-                    m.response_time,
-                    m.error_message,
-                    m.created_at as update_at
-                FROM ott_cdn_servers s
-                CROSS JOIN ott_preview_channels c
-                LEFT JOIN ott_monitoring_logs m ON 
-                    m.cdn_server_id = s.id AND 
-                    m.channel_id = c.id
-                ${whereClause}
-                ORDER BY s.id, c.id, m.created_at DESC
-            )
-            SELECT *
-            FROM RankedLogs
+            SELECT 
+                m.id,
+                s.name_cdn,
+                s.ip_cdn,
+                c.name_channel,
+                m.status,
+                m.response_time,
+                m.error_message,
+                m.created_at AS update_at
+            FROM ott_cdn_servers s
+            CROSS JOIN ott_preview_channels c
+            LEFT JOIN LATERAL (
+                SELECT 
+                    id,
+                    status,
+                    response_time,
+                    error_message,
+                    created_at
+                FROM ott_monitoring_logs m2
+                WHERE m2.cdn_server_id = s.id
+                AND m2.channel_id = c.id
+                ORDER BY created_at DESC
+                LIMIT 1
+            ) m ON true
+            ${whereClause}
             ORDER BY 
-                status ASC,
-                update_at ASC
+                COALESCE(m.status, false) ASC,
+                m.created_at ASC
             LIMIT $${paramCount}
             OFFSET $${paramCount + 1}
         `;
@@ -265,6 +268,12 @@ app.get('/monitoring/status', async (req, res) => {
         // Add pagination parameters
         const queryParams = [...searchParams, limit, offset];
         const result = await pool.query(mainQuery, queryParams);
+
+        // Format the response data
+        const formattedResults = result.rows.map(row => ({
+            ...row,
+            update_at: row.update_at ? moment(row.update_at).format('YYYY-MM-DD HH:mm:ss.SSS Z') : null
+        }));
         
         // Prepare pagination metadata
         const pagination = {
@@ -282,11 +291,65 @@ app.get('/monitoring/status', async (req, res) => {
             message: "Data retrieved successfully",
             pagination: pagination,
             search: search,
-            data: result.rows
+            data: formattedResults
         });
 
     } catch (error) {
         console.error('Error in /monitoring/status:', error);
+        res.status(500).json({
+            status: "error",
+            message: error.message,
+            data: null
+        });
+    }
+});
+
+// Monitoring detail endpoint
+app.get('/monitoring/status/detail/:id', async (req, res) => {
+    try {
+        const logId = req.params.id;
+
+        const query = `
+            SELECT 
+                s.name_cdn,
+                s.ip_cdn,
+                c.name_channel,
+                m.status,
+                m.response_time,
+                m.error_message,
+                m.request_url,
+                m.response_body,
+                m.created_at AS update_at
+            FROM ott_monitoring_logs m
+            JOIN ott_cdn_servers s ON s.id = m.cdn_server_id
+            JOIN ott_preview_channels c ON c.id = m.channel_id
+            WHERE m.id = $1
+        `;
+
+        const result = await pool.query(query, [logId]);
+
+        if (result.rows.length === 0) {
+            return res.status(404).json({
+                status: "error",
+                message: "Monitoring log not found",
+                data: null
+            });
+        }
+
+        // Format the timestamp
+        const formattedResult = {
+            ...result.rows[0],
+            update_at: moment(result.rows[0].update_at).format('YYYY-MM-DD HH:mm:ss.SSS Z')
+        };
+
+        res.json({
+            status: "success",
+            message: "Data retrieved successfully",
+            data: formattedResult
+        });
+
+    } catch (error) {
+        console.error('Error in /monitoring/detail/:id:', error);
         res.status(500).json({
             status: "error",
             message: error.message,
