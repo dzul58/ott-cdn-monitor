@@ -1,6 +1,7 @@
 import { createBrowserRouter} from 'react-router-dom';
 import Parent from "../pages/Parent";
-import Home from "../pages/home";
+import Home from "../pages/Home";
+import DetailChannel from '../pages/DetailChannel';
 
 const router = createBrowserRouter([
     {
@@ -11,8 +12,8 @@ const router = createBrowserRouter([
           element: <Home />,
         },
         {
-          path: "/hmpdetails/:id",
-          element: <DetailHomepass />,
+          path: "/detail/:id",
+          element: <DetailChannel />,
         },
 
       ],
