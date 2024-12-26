@@ -4,9 +4,15 @@ const { Pool } = require('pg');
 const cron = require('node-cron');
 const axios = require('axios');
 const moment = require('moment-timezone');
+const cors = require('cors');
 
 const app = express();
 const port = 3000;
+
+app.use(cors({
+  origin: ['http://localhost:5173'],
+  credentials: true
+}));
 
 // Middleware
 app.use(express.json());
