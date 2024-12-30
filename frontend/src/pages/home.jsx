@@ -29,11 +29,33 @@ const Home = () => {
       setData(response.data.data);
       setPagination(response.data.pagination);
       setPageInput(page.toString());
+      setLastRefresh(new Date());
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  // Effect for initial load and search/page changes
+  useEffect(() => {
+    fetchData(currentPage);
+  }, [currentPage, search]);
+
+  // Effect for auto-refresh every 5 minutes
+  useEffect(() => {
+    const interval = setInterval(() => {
+      fetchData(currentPage);
+      console.log('Auto-refreshing data...'); // Optional: for debugging
+    }, 5 * 60 * 1000); // 5 minutes in milliseconds
+
+    // Cleanup interval on component unmount
+    return () => clearInterval(interval);
+  }, [currentPage, search]); // Dependencies ensure interval is reset when these change
+
+  // Format the last refresh time
+  const formatLastRefresh = () => {
+    return lastRefresh.toLocaleTimeString();
   };
 
   useEffect(() => {
