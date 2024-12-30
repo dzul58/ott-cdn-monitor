@@ -13,7 +13,7 @@ const DetailChannel = () => {
     const fetchDetail = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`http://localhost:3000/monitoring/status/detail/${id}`);
+        const response = await axios.get(`http://172.17.42.175:3000/monitoring/status/detail/${id}`);
         setDetail(response.data.data);
       } catch (error) {
         console.error('Error fetching detail:', error);

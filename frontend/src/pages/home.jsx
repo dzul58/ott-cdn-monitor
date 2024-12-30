@@ -28,7 +28,7 @@ const Home = () => {
         ...search
       });
 
-      const response = await axios.get(`http://localhost:3000/monitoring/status?${params}`);
+      const response = await axios.get(`http://172.17.42.175:3000/monitoring/status?${params}`);
       setData(response.data.data);
       setPagination(response.data.pagination);
       setPageInput(page.toString());
