@@ -15,6 +15,7 @@ const Home = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState('');
   const navigate = useNavigate();
+  
 
   const fetchData = async (page = 1) => {
     setLoading(true);
