@@ -13,6 +13,7 @@ const Home = () => {
     name_channel: ''
   });
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState('');
   const navigate = useNavigate();
 
   const fetchData = async (page = 1) => {
@@ -27,6 +28,7 @@ const Home = () => {
       const response = await axios.get(`http://localhost:3000/monitoring/status?${params}`);
       setData(response.data.data);
       setPagination(response.data.pagination);
+      setPageInput(page.toString());
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -46,6 +48,24 @@ const Home = () => {
 
   const handleViewDetail = (id) => {
     navigate(`/detail/${id}`);
+  };
+
+  const handlePageInputChange = (e) => {
+    const value = e.target.value;
+    if (value === '' || /^\d+$/.test(value)) {
+      setPageInput(value);
+    }
+  };
+
+  const handlePageInputSubmit = (e) => {
+    e.preventDefault();
+    const pageNumber = parseInt(pageInput);
+    if (pageNumber >= 1 && pageNumber <= pagination.totalPages) {
+      setCurrentPage(pageNumber);
+    } else {
+      // Reset to current page if invalid
+      setPageInput(currentPage.toString());
+    }
   };
 
   return (
@@ -139,7 +159,7 @@ const Home = () => {
         </table>
       </div>
 
-      {/* Pagination */}
+      {/* Enhanced Pagination */}
       {pagination && (
         <div className="flex items-center justify-between mt-4 px-4">
           <div className="flex items-center">
@@ -147,21 +167,40 @@ const Home = () => {
               Showing page {pagination.currentPage} of {pagination.totalPages}
             </p>
           </div>
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-              disabled={!pagination.hasPreviousPage}
-              className="p-2 border rounded-md disabled:opacity-50"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <button
-              onClick={() => setCurrentPage(prev => prev + 1)}
-              disabled={!pagination.hasNextPage}
-              className="p-2 border rounded-md disabled:opacity-50"
-            >
-              <ChevronRight className="h-5 w-5" />
-            </button>
+          <div className="flex items-center space-x-4">
+            <form onSubmit={handlePageInputSubmit} className="flex items-center space-x-2">
+              <label htmlFor="pageInput" className="text-sm text-gray-600">Go to page:</label>
+              <input
+                id="pageInput"
+                type="text"
+                value={pageInput}
+                onChange={handlePageInputChange}
+                className="w-16 p-1 border rounded-md text-center text-sm"
+                placeholder="Page #"
+              />
+              <button
+                type="submit"
+                className="px-3 py-1 text-sm bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
+              >
+                Go
+              </button>
+            </form>
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={!pagination.hasPreviousPage}
+                className="p-2 border rounded-md disabled:opacity-50"
+              >
+                <ChevronLeft className="h-5 w-5" />
+              </button>
+              <button
+                onClick={() => setCurrentPage(prev => prev + 1)}
+                disabled={!pagination.hasNextPage}
+                className="p-2 border rounded-md disabled:opacity-50"
+              >
+                <ChevronRight className="h-5 w-5" />
+              </button>
+            </div>
           </div>
         </div>
       )}
