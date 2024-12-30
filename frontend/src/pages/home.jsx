@@ -15,6 +15,8 @@ const Home = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState('');
   const navigate = useNavigate();
+  const [lastRefresh, setLastRefresh] = useState(new Date());
+
   
 
   const fetchData = async (page = 1) => {
@@ -44,15 +46,14 @@ const Home = () => {
   }, [currentPage, search]);
 
   // Effect for auto-refresh every 5 minutes
-  useEffect(() => {
+useEffect(() => {
     const interval = setInterval(() => {
       fetchData(currentPage);
-      console.log('Auto-refreshing data...'); // Optional: for debugging
-    }, 5 * 60 * 1000); // 5 minutes in milliseconds
-
-    // Cleanup interval on component unmount
+      console.log('Auto-refreshing data...', new Date().toLocaleTimeString());
+    }, 5 * 60 * 1000);
+  
     return () => clearInterval(interval);
-  }, [currentPage, search]); // Dependencies ensure interval is reset when these change
+  }, []);// Dependencies ensure interval is reset when these change
 
   // Format the last refresh time
   const formatLastRefresh = () => {
