@@ -1,13 +1,19 @@
 module.exports = {
-    apps: [
-      {
-        name: "frontend",
-        script: "serve",
-        args: "-s dist -l 5173", // -s untuk serve static files, -l untuk menentukan port
-        env: {
-          NODE_ENV: "production",
-        },
+  apps: [
+    {
+      name: "frontend",
+      script: "vite",
+      interpreter: "node",
+      env: {
+        NODE_ENV: "development",
+        HOST: "0.0.0.0",
+        PORT: 5173,
       },
-    ],
-  };
-  
+      env_production: {
+        NODE_ENV: "production",
+        HOST: "0.0.0.0",
+        PORT: 5173,
+      },
+    },
+  ],
+};
