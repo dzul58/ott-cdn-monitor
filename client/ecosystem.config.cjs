@@ -1,7 +1,7 @@
 module.exports = {
     apps: [
       {
-        name: "ma-nisa-fe",
+        name: "frontend",
         script: "npx",
         args: "serve -s dist -l 5173",
         env: {
