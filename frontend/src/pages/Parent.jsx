@@ -1,14 +1,17 @@
-import React from 'react';
-import { Outlet } from 'react-router-dom';
+import React from "react";
+import { Outlet } from "react-router-dom";
 // import Navbar from '../components/Navbar';
 
-const Parent = () => {
+function Parent() {
   return (
-    <>
-      {/* <Navbar /> */}
-      <Outlet />
-    </>
+    <div className="parent-container">
+      {/* Header, Navigation, dll bisa ditambahkan di sini */}
+      <main>
+        <Outlet />
+      </main>
+      {/* Footer bisa ditambahkan di sini */}
+    </div>
   );
-};
+}
 
 export default Parent;

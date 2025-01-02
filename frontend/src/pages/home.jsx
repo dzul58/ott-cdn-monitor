@@ -17,6 +17,7 @@ const Home = () => {
   const [pageInput, setPageInput] = useState("");
   const navigate = useNavigate();
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const [error, setError] = useState(null);
 
   const fetchData = async (page = 1) => {
     setLoading(true);
@@ -32,8 +33,8 @@ const Home = () => {
       setPagination(response.data.pagination);
       setPageInput(page.toString());
       setLastRefresh(new Date());
-    } catch (error) {
-      console.error("Error fetching data:", error);
+    } catch (err) {
+      setError(err.message);
     } finally {
       setLoading(false);
     }
@@ -90,6 +91,10 @@ const Home = () => {
       setPageInput(currentPage.toString());
     }
   };
+
+  if (loading) return <div>Loading...</div>;
+  if (error) return <div>Error: {error}</div>;
+  if (!data || !Array.isArray(data)) return <div>No data available</div>;
 
   return (
     <div className="container">
@@ -149,53 +154,31 @@ const Home = () => {
             </tr>
           </thead>
           <tbody>
-            {loading ? (
-              <tr>
-                <td
-                  colSpan="7"
-                  className="table-cell"
-                  style={{ textAlign: "center" }}
-                >
-                  Loading...
+            {data.map((item) => (
+              <tr key={item.id} className="table-row">
+                <td className="table-cell">{item.name_cdn}</td>
+                <td className="table-cell">{item.ip_cdn}</td>
+                <td className="table-cell">{item.name_channel}</td>
+                <td className="table-cell">
+                  <span
+                    className={`status-badge ${
+                      item.status ? "status-active" : "status-inactive"
+                    }`}
+                  >
+                    {item.status ? "Active" : "Inactive"}
+                  </span>
+                </td>
+                <td className="table-cell">{item.update_at}</td>
+                <td className="table-cell">
+                  <button
+                    onClick={() => handleViewDetail(item.id)}
+                    className="view-details-button"
+                  >
+                    View Details
+                  </button>
                 </td>
               </tr>
-            ) : data.length === 0 ? (
-              <tr>
-                <td
-                  colSpan="7"
-                  className="table-cell"
-                  style={{ textAlign: "center" }}
-                >
-                  No data found
-                </td>
-              </tr>
-            ) : (
-              data.map((item) => (
-                <tr key={item.id} className="table-row">
-                  <td className="table-cell">{item.name_cdn}</td>
-                  <td className="table-cell">{item.ip_cdn}</td>
-                  <td className="table-cell">{item.name_channel}</td>
-                  <td className="table-cell">
-                    <span
-                      className={`status-badge ${
-                        item.status ? "status-active" : "status-inactive"
-                      }`}
-                    >
-                      {item.status ? "Active" : "Inactive"}
-                    </span>
-                  </td>
-                  <td className="table-cell">{item.update_at}</td>
-                  <td className="table-cell">
-                    <button
-                      onClick={() => handleViewDetail(item.id)}
-                      className="view-details-button"
-                    >
-                      View Details
-                    </button>
-                  </td>
-                </tr>
-              ))
-            )}
+            ))}
           </tbody>
         </table>
       </div>
