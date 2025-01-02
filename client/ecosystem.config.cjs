@@ -2,11 +2,11 @@ module.exports = {
     apps: [
       {
         name: "frontend",
-        script: "npx",
-        args: "serve -s dist -l 5173",
+        script: "node",
+        args: "node_modules/vite/bin/vite.js preview --port 5173",
         env: {
           NODE_ENV: "production"
         }
       }
     ]
-  };
+};
