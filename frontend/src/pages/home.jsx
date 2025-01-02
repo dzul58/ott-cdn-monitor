@@ -6,7 +6,12 @@ import "../styles/Home.css";
 
 const Home = () => {
   const [data, setData] = useState([]);
-  const [pagination, setPagination] = useState({});
+  const [pagination, setPagination] = useState({
+    currentPage: 1,
+    totalPages: 1,
+    hasNextPage: false,
+    hasPreviousPage: false,
+  });
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState({
     name_cdn: "",
@@ -14,7 +19,7 @@ const Home = () => {
     name_channel: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
+  const [pageInput, setPageInput] = useState("1");
   const navigate = useNavigate();
   const [lastRefresh, setLastRefresh] = useState(new Date());
   const [error, setError] = useState(null);
@@ -29,12 +34,25 @@ const Home = () => {
       });
 
       const response = await axios.get(`/api/monitoring/status?${params}`);
-      setData(response.data.data);
-      setPagination(response.data.pagination);
+      if (response.data && response.data.data) {
+        setData(response.data.data);
+        setPagination(
+          response.data.pagination || {
+            currentPage: 1,
+            totalPages: 1,
+            hasNextPage: false,
+            hasPreviousPage: false,
+          }
+        );
+      } else {
+        setData([]);
+        setError("No data received from server");
+      }
       setPageInput(page.toString());
       setLastRefresh(new Date());
     } catch (err) {
       setError(err.message);
+      setData([]);
     } finally {
       setLoading(false);
     }
@@ -92,10 +110,6 @@ const Home = () => {
     }
   };
 
-  if (loading) return <div>Loading...</div>;
-  if (error) return <div>Error: {error}</div>;
-  if (!data || !Array.isArray(data)) return <div>No data available</div>;
-
   return (
     <div className="container">
       <h1 className="title">CDN Monitoring Dashboard</h1>
@@ -142,45 +156,59 @@ const Home = () => {
 
       {/* Table */}
       <div className="table-container">
-        <table className="table">
-          <thead className="table-header">
-            <tr>
-              <th>CDN Name</th>
-              <th>IP</th>
-              <th>Channel</th>
-              <th>Status</th>
-              <th>Last Update</th>
-              <th>Actions</th>
-            </tr>
-          </thead>
-          <tbody>
-            {data.map((item) => (
-              <tr key={item.id} className="table-row">
-                <td className="table-cell">{item.name_cdn}</td>
-                <td className="table-cell">{item.ip_cdn}</td>
-                <td className="table-cell">{item.name_channel}</td>
-                <td className="table-cell">
-                  <span
-                    className={`status-badge ${
-                      item.status ? "status-active" : "status-inactive"
-                    }`}
-                  >
-                    {item.status ? "Active" : "Inactive"}
-                  </span>
-                </td>
-                <td className="table-cell">{item.update_at}</td>
-                <td className="table-cell">
-                  <button
-                    onClick={() => handleViewDetail(item.id)}
-                    className="view-details-button"
-                  >
-                    View Details
-                  </button>
-                </td>
+        {loading ? (
+          <div className="loading">Loading...</div>
+        ) : error ? (
+          <div className="error">{error}</div>
+        ) : (
+          <table className="table">
+            <thead className="table-header">
+              <tr>
+                <th>CDN Name</th>
+                <th>IP</th>
+                <th>Channel</th>
+                <th>Status</th>
+                <th>Last Update</th>
+                <th>Actions</th>
               </tr>
-            ))}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {Array.isArray(data) && data.length > 0 ? (
+                data.map((item) => (
+                  <tr key={item.id} className="table-row">
+                    <td className="table-cell">{item.name_cdn}</td>
+                    <td className="table-cell">{item.ip_cdn}</td>
+                    <td className="table-cell">{item.name_channel}</td>
+                    <td className="table-cell">
+                      <span
+                        className={`status-badge ${
+                          item.status ? "status-active" : "status-inactive"
+                        }`}
+                      >
+                        {item.status ? "Active" : "Inactive"}
+                      </span>
+                    </td>
+                    <td className="table-cell">{item.update_at}</td>
+                    <td className="table-cell">
+                      <button
+                        onClick={() => handleViewDetail(item.id)}
+                        className="view-details-button"
+                      >
+                        View Details
+                      </button>
+                    </td>
+                  </tr>
+                ))
+              ) : (
+                <tr>
+                  <td colSpan="6" className="table-cell text-center">
+                    No data available
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        )}
       </div>
 
       {/* Pagination */}
