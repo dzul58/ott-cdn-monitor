@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: "frontend",
-      script: "npx",
-      args: "serve -s dist -l 5173",
+      script: "npm",
+      args: "run preview",
       interpreter: "none",
       env: {
         NODE_ENV: "production",
