@@ -2,8 +2,8 @@ module.exports = {
   apps: [
     {
       name: "frontend",
-      script: "serve",
-      args: "-s dist -l 5173", // -s untuk static files, -l untuk port
+      script: "npx",
+      args: "serve -s dist -l 5173",
       interpreter: "none",
       env: {
         NODE_ENV: "production",
